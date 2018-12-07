@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Tarea 5"
 output: html_notebook
 ---
 
@@ -7,13 +7,104 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
 
-```{r}
-plot(cars)
+```{r message=TRUE, warning=TRUE}
+library(tidyquant)
+library(dplyr)
+library(ggplot2)
+
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+```{r}
+microsoft <- tq_get("MSFT",
+                    get = "stock.prices",
+                    from = "2000-01-01",
+                    to = "2018-08-31",
+                    periodicity = "monthly")
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+apple <- tq_get("AAPL",
+                get = "stock.prices",
+                from = "2000-01-01",
+                to = "2018-08-31",
+                periodicity = "monthly")
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```
+
+
+```{r}
+retorno <- function(x, return=c('yes','no'),plot=c('type 1', 'type 2'), normal =c('yes','no')) {
+data <- x
+ g <- 0
+  if(return == 'yes'){
+    data$retorno = NA
+    data$acumulado = NA
+    
+  ajustado <- data$adjusted 
+  logajustado= diff(log(ajustado),lag=1)
+  retorno = data.frame(rbind(0,data.frame(logajustado)))
+  data$retorno = retorno[,1]
+  data$acumulado <- cumsum(data$retorno)
+    
+  
+  
+
+  if(plot=='type 1'){
+    g <- data %>% ggplot(mapping= aes(x=retorno))+
+      geom_density(alpha=0.5) + scale_fill_tq() 
+  }
+  if(plot == 'type 2'){
+    g <- data %>% ggplot (mapping = aes(x= date, y= acumulado)) +
+      geom_line()+ theme_tq()
+  }
+  }
+  
+
+  if (return == 'no') {
+    data$retorno = NA
+    data$acumulado = NA
+    
+    ajustado <- data$adjusted 
+    retorno = ((rbind(0,data.frame(diff(ajustado,lag=1))))/(ajustado-rbind(0,data.frame(diff(ajustado,lag=1)))))
+    data$retorno = retorno[,1]
+    data$acumulado <- cumsum(data$retorno)
+    
+    if(plot== 'type 1'){
+      g <- data %>% ggplot(mapping= aes(x=retorno))+
+        geom_density(alpha=0.5) + scale_fill_tq() 
+    }
+    if(plot == 'type 2'){
+      g <- data %>% ggplot (mapping = aes(x= date, y= acumulado)) +
+        geom_line()+ theme_tq()
+    }
+  
+  }
+  
+ n <- nrow(data)
+ mean = sum(data$retorno)/n
+ s = ((sum(data$retorno-mean)^3)/n)/((sum(data$retorno-mean)^2)/n)^(3/2)
+ k = ((sum(data$retorno-mean)^4)/n)/((sum(data$retorno-mean)^2)/n)^2
+ JB = n*(((s^2)/6)+(((k-3)^2)/24))
+ if(normal == 'yes'){
+ if(1 - pchisq(JB,df = 2)<0.05){
+   m <- cat("JB =",JB,", P-value =",1 - pchisq(JB,df = 2),", Se rechaza la hipotesis nula de normalidad")
+ 
+} else{
+   m <- cat("JB =",JB,", P-value =",1 - pchisq(JB,df = 2),", No se rechaza la hipotesis nula de normalidad")}
+ }
+ 
+ 
+
+return(g)
+  }
+
+```
+
+
+Ejemplos
+```{r}
+retorno(apple,"yes","type 1","yes")
+retorno(microsoft,"no","type 2","no")
+```
+
+
+
 
